@@ -2,7 +2,7 @@
  * @Author: doramart 
  * @Date: 2019-09-23 14:44:21 
  * @Last Modified by: doramart
- * @Last Modified time: 2019-09-30 10:47:37
+ * @Last Modified time: 2019-11-03 22:54:46
  */
 
 const _ = require('lodash');
@@ -201,22 +201,14 @@ let TemplateConfigController = {
 
     async getTempsFromShop(ctx, app) {
 
-        let current = ctx.query.current || 1;
-        let pageSize = ctx.query.limit || 10;
 
-        let linkParams = `?limit=${pageSize}&currentPage=${current}`;
+        let payload = ctx.query;
 
         try {
-            let templateList = await axios.get(app.config.doracms_api + '/system/template' + linkParams);
-            if (templateList.status == 200) {
-                ctx.helper.renderSuccess(ctx, {
-                    data: templateList.data
-                });
-            } else {
-                ctx.helper.renderFail(ctx, {
-                    message: 'get template error'
-                });
-            }
+            let pluginList = await ctx.helper.reqJsonData(app.config.doracms_api + '/api/cmsTemplate/getList', payload);
+            ctx.helper.renderSuccess(ctx, {
+                data: pluginList
+            });
         } catch (err) {
             ctx.helper.renderFail(ctx, {
                 message: err
