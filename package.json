@@ -1,6 +1,6 @@
 {
   "name": "egg-dora-templateconfig",
-  "version": "1.0.2",
+  "version": "1.0.5",
   "description": "templateConfig",
   "eggPlugin": {
     "name": "doraTemplateConfig"
@@ -58,7 +58,7 @@
     "url": "git+https://github.com/doramart/egg-dora-templateconfig.git"
   },
   "bugs": {
-    "url": "https://github.com/doramart/egg/issues"
+    "url": "https://github.com/doramart/egg-dora-templateconfig/issues"
   },
   "homepage": "https://github.com/doramart/egg-dora-templateconfig#readme",
   "author": "doramart",
