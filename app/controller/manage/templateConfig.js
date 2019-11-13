@@ -2,7 +2,7 @@
  * @Author: doramart 
  * @Date: 2019-09-23 14:44:21 
  * @Last Modified by: doramart
- * @Last Modified time: 2019-09-30 10:47:37
+ * @Last Modified time: 2019-11-13 14:29:14
  */
 
 const _ = require('lodash');
@@ -16,11 +16,9 @@ const awaitWriteStream = require('await-stream-ready').write
 
 const shortid = require('shortid');
 const path = require('path')
-const axios = require('axios');
-const unzip = require('unzip2');
+const unzip = require('node-unzip-2');
 const fs = require('fs');
 const iconv = require('iconv-lite');
-const http = require('http');
 const url = require('url');
 
 const templateConfigRule = (ctx) => {
@@ -83,14 +81,15 @@ let TemplateConfigController = {
         })
     },
 
-    _checkDistForder(targetPath, forderArr) {
+    _checkDistForder(ctx, targetPath, forderArr) {
         return new Promise((resolve, reject) => {
-            let checkState = siteFunc.checkExistFile(ctx.helper.scanJustFolder(targetPath), forderArr);
+            let folderList = ctx.helper.scanJustFolder(targetPath);
+            let checkState = siteFunc.checkExistFile(folderList, forderArr);
             if (checkState) {
                 resolve();
             } else {
                 let checkTimer = setInterval(() => {
-                    if (siteFunc.checkExistFile(ctx.helper.scanJustFolder(targetPath), forderArr)) {
+                    if (siteFunc.checkExistFile(folderList, forderArr)) {
                         clearInterval(checkTimer);
                         resolve();
                     }
@@ -201,22 +200,14 @@ let TemplateConfigController = {
 
     async getTempsFromShop(ctx, app) {
 
-        let current = ctx.query.current || 1;
-        let pageSize = ctx.query.limit || 10;
 
-        let linkParams = `?limit=${pageSize}&currentPage=${current}`;
+        let payload = ctx.query;
 
         try {
-            let templateList = await axios.get(app.config.doracms_api + '/system/template' + linkParams);
-            if (templateList.status == 200) {
-                ctx.helper.renderSuccess(ctx, {
-                    data: templateList.data
-                });
-            } else {
-                ctx.helper.renderFail(ctx, {
-                    message: 'get template error'
-                });
-            }
+            let pluginList = await ctx.helper.reqJsonData(app.config.doracms_api + '/api/cmsTemplate/getList', payload);
+            ctx.helper.renderSuccess(ctx, {
+                data: pluginList
+            });
         } catch (err) {
             ctx.helper.renderFail(ctx, {
                 message: err
@@ -225,14 +216,22 @@ let TemplateConfigController = {
     },
 
     async installTemp(ctx, app) {
-        let tempId = ctx.query.tempId;
 
+        let tempId = ctx.query.tempId;
+        let singleUserToken = ctx.query.singleUserToken;
+        let tempObj = {};
         try {
             if (tempId) {
-                let templateInfo = await axios.get(app.config.doracms_api + '/system/template/getItem?tempId=' + tempId);
-                if (templateInfo.status == 200) {
+                let templateInfo = await ctx.helper.reqJsonData(app.config.doracms_api + '/api/cmsTemplate/getOne', {
+                    id: tempId,
+                    singleUserToken,
+                    authUser: '1'
+                });
+
+                // let templateInfo = await axios.get(app.config.doracms_api + '/api/cmsTemplate/getOne?id=' + tempId + '&singleUserToken=' + singleUserToken + '&authUser=1');
+                if (!_.isEmpty(templateInfo)) {
                     // console.log('----templateInfo---', templateInfo)
-                    let tempObj = templateInfo.data;
+                    tempObj = templateInfo;
                     if (_.isEmpty(tempObj)) {
                         throw new Error(ctx.__("validate_error_params"));
                     }
@@ -245,77 +244,87 @@ let TemplateConfigController = {
                         throw new Error('您已安装该模板');
                     }
 
-                    fs.mkdir(DOWNLOAD_DIR, (err) => {
-                        if (err) {
-                            console.log(err);
-                            throw new Error(err);
-                        } else {
-                            download_file_httpget(file_url, async () => {
-                                //下载完成后解压缩
-                                let extract = unzip.Extract({
-                                    path: DOWNLOAD_DIR
-                                });
-                                extract.on('error', function (err) {
-                                    console.log(err);
-                                    //解压异常处理
-                                    throw new Error(err);
-                                });
-                                extract.on('finish', async () => {
-                                    console.log("解压完成!!");
-                                    //解压完成处理入库操作
-                                    let newTempItem = await ctx.service.templateItem.create({
-                                        forder: "2-stage-default",
-                                        name: 'Default',
-                                        isDefault: true,
-                                    });
-
-                                    let newTempObj = _.assign({}, tempObj, {
-                                        using: false,
-                                        items: []
-                                    });
-                                    newTempObj.items.push(newTempItem._id);
-                                    await ctx.service.templateItem.create(newTempObj);
-
-                                    //复制静态文件到公共目录
-                                    let temp_static_forder = app.config.temp_static_forder;
-                                    await this._checkDistForder(app.config.temp_view_forder + tempObj.alias + '/dist', ['images', 'css', 'js']);
-                                    let fromPath = app.config.temp_view_forder + tempObj.alias + '/dist/';
-                                    let targetPath = temp_static_forder + tempObj.alias;
-
-                                    ctx.helper.copyForder(fromPath, targetPath);
-
-                                    ctx.helper.renderSuccess(ctx);
-
-                                });
-                                fs.createReadStream(target_path).pipe(extract);
-
-                            });
-                        }
-
-                    });
+                    fs.mkdirSync(DOWNLOAD_DIR);
 
                     // 文件下载
-                    let download_file_httpget = function (file_url, callBack) {
-                        let options = {
-                            host: url.parse(file_url).host,
-                            port: 80,
-                            path: url.parse(file_url).pathname
-                        };
+                    let download_file_httpget = function (file_url) {
+                        return new Promise(async (resolve, reject) => {
+                            // console.log('download_file_httpget', file_url);
 
-                        let file_name = url.parse(file_url).pathname.split('/').pop();
-                        let file = fs.createWriteStream(DOWNLOAD_DIR + file_name);
-
-                        http.get(options, function (res) {
-                            ctx.on('data', function (data) {
-                                file.write(data);
-                            }).on('end', function (ctx, app) {
-                                file.end();
-                                setTimeout(() => {
-                                    callBack(DOWNLOAD_DIR);
-                                }, 5000)
+                            let file_name = url.parse(file_url).pathname.split('/').pop();
+                            const res = await ctx.curl(file_url, {
+                                streaming: true,
                             });
-                        });
+                            let stream = res.res;
+                            const writeStream = fs.createWriteStream(DOWNLOAD_DIR + file_name)
+                            // console.log('--res---', res.res);
+                            try {
+                                await awaitWriteStream(stream.pipe(writeStream))
+                                setTimeout(() => {
+                                    resolve();
+                                }, 5000)
+                            } catch (err) {
+                                // 必须将上传的文件流消费掉，要不然浏览器响应会卡死
+                                await sendToWormhole(stream)
+                                reject(err);
+                            }
+
+                        })
                     };
+
+                    // 文件下载
+                    await download_file_httpget(file_url);
+
+                    let extractfile = () => {
+                        return new Promise((resolve, reject) => {
+                            //下载完成后解压缩
+                            let extract = unzip.Extract({
+                                path: DOWNLOAD_DIR
+                            });
+                            extract.on('error', function (err) {
+                                console.log(err);
+                                //解压异常处理
+                                reject(err);
+                            });
+                            extract.on('finish', async () => {
+                                console.log("解压完成!!");
+                                //解压完成处理入库操作
+                                let newTempItem = await ctx.service.templateItem.create({
+                                    forder: "2-stage-default",
+                                    name: 'Default',
+                                    isDefault: true,
+                                });
+
+                                let newTempObj = _.assign({}, tempObj, {
+                                    using: false,
+                                    items: []
+                                });
+                                newTempObj.items.push(newTempItem._id);
+                                await ctx.service.contentTemplate.create(newTempObj);
+                                await this._checkDistForder(ctx, app.config.temp_view_forder + tempObj.alias + '/dist', ['images', 'css', 'js']);
+                                setTimeout(() => {
+                                    resolve(tempObj.alias);
+                                }, 5000)
+
+                            });
+                            fs.createReadStream(target_path).pipe(extract);
+
+                        })
+                    }
+
+                    // 文件解压
+                    let tempAlias = await extractfile();
+                    //复制静态文件到公共目录
+                    let temp_static_forder = app.config.temp_static_forder;
+                    let fromPath = app.config.temp_view_forder + tempAlias + '/dist/';
+                    let targetPath = temp_static_forder + tempAlias;
+                    ctx.helper.copyForder(fromPath, targetPath);
+                    await ctx.helper.deleteFolder(DOWNLOAD_DIR + `${tempAlias}.zip`);
+                    let macFile = DOWNLOAD_DIR + '__MACOSX';
+                    if (fs.existsSync(macFile)) {
+                        await ctx.helper.deleteFolder(macFile);
+                    }
+                    ctx.helper.renderSuccess(ctx);
 
                 } else {
                     throw new Error('install error');
@@ -325,6 +334,8 @@ let TemplateConfigController = {
             }
 
         } catch (err) {
+            // let tempForder = app.config.temp_view_forder + tempObj.alias.trim() + '/';
+            // await ctx.helper.deleteFolder(tempForder);
             ctx.helper.renderFail(ctx, {
                 message: err
             });

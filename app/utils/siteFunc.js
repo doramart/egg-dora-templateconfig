@@ -23,7 +23,7 @@ var siteFunc = {
             })
             filterForderArr = filterForderArr.concat(currentForder);
         }
-        if (filterForderArr.length > 0 && (tempFilelist.length >= forderArr.length) && (filterForderArr.length == tempFilelist.length)) {
+        if (filterForderArr.length > 0 && (tempFilelist.length >= forderArr.length) && (filterForderArr.length >= forderArr.length)) {
             distPath = true;
         }
 
