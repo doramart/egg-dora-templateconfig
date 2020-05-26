@@ -1,6 +1,6 @@
 {
   "name": "egg-dora-templateconfig",
-  "version": "1.0.2",
+  "version": "1.0.15",
   "description": "templateConfig",
   "eggPlugin": {
     "name": "doraTemplateConfig"
@@ -11,16 +11,16 @@
     "egg-plugin"
   ],
   "dependencies": {
-    "axios": "^0.19.0",
     "await-stream-ready": "^1.0.1",
-    "shortid": "^2.2.14",
-    "moment": "^2.24.0",
-    "lodash": "^4.17.15",
-    "xss": "^1.0.6",
-    "stream-wormhole": "^1.1.0",
-    "unzip2": "^0.2.5",
+    "axios": "^0.19.0",
+    "egg-dora-contenttemp": "^1.0.0",
     "iconv-lite": "^0.5.0",
-    "egg-dora-contenttemp": "^1.0.0"
+    "lodash": "^4.17.15",
+    "moment": "^2.24.0",
+    "node-unzip-2": "^0.2.8",
+    "shortid": "^2.2.14",
+    "stream-wormhole": "^1.1.0",
+    "xss": "^1.0.6"
   },
   "devDependencies": {
     "autod": "^3.0.1",
@@ -58,7 +58,7 @@
     "url": "git+https://github.com/doramart/egg-dora-templateconfig.git"
   },
   "bugs": {
-    "url": "https://github.com/doramart/egg/issues"
+    "url": "https://github.com/doramart/egg-dora-templateconfig/issues"
   },
   "homepage": "https://github.com/doramart/egg-dora-templateconfig#readme",
   "author": "doramart",
