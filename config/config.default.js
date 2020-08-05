@@ -17,7 +17,7 @@ exports.doraTemplateConfig = {
     isindex: 0, // 是否需要前台访问，1：需要，0：不需要,入口地址:'/ext/devteam/index/index'
     version: pkgInfo.version, // 版本号
     iconName: 'icon_skin', // 主菜单图标名称
-    adminUrl: 'https://cdn.html-js.cn/cms/plugins/static/admin/templateConfig/js/app.js',
+    adminUrl: '/templateConfig/js/app.js',
     adminApi: [{
         url: 'template/getMyTemplateList',
         method: 'get',
@@ -50,6 +50,11 @@ exports.doraTemplateConfig = {
         controllerName: 'installTemp',
         details: '安装模板',
     }, {
+        url: 'template/updateTemp',
+        method: 'get',
+        controllerName: 'updateTemplate',
+        details: '更新模板',
+    }, {
         url: 'template/uploadCMSTemplate',
         method: 'post',
         controllerName: 'uploadCMSTemplate',
@@ -69,19 +74,19 @@ exports.doraTemplateConfig = {
 
     initData: 'templateitems.json', // 初始化数据脚本
     pluginsConfig: ` 
-    exports.doraTemplateConfig = {\n
-        enable: true,\n
-        \n
+    module.exports = {\n
+        enable: true,\n        package: 'egg-dora-templateconfig',
     };\n
     `, // 插入到 plugins.js 中的配置
     defaultConfig: `
-    templateConfigRouter:{\n
+    module.exports = {\n
         match: ['/manage/template/getMyTemplateList',
         '/manage/template/addTemplateItem',
         '/manage/template/delTemplateItem',
         '/manage/template/getTemplateItemlist',
         '/manage/template/getTempsFromShop',
         '/manage/template/installTemp',
+        '/manage/template/updateTemp',
         '/manage/template/uploadCMSTemplate',
         '/manage/template/enableTemp',
         '/manage/template/uninstallTemp',
